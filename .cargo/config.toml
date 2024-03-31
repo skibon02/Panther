@@ -1,0 +1,3 @@
+[build]
+target = "aarch64-linux-android"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]

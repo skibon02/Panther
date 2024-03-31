@@ -1,0 +1,26 @@
+[package]
+name = "panther"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+log = "0.4"
+winit = { version = "0.28", features = ["android-native-activity"] }
+glutin = { version = "0.31.3", features = ["egl"] }
+raw-window-handle = "0.5.0"
+android_logger = "0.13"
+jni = "0.21.1"
+ab_glyph = "0.2.23"
+
+[build-dependencies]
+gl_generator = "0.14"
+
+[lib]
+#name="main"
+crate_type=["cdylib"]
+
+[[bin]]
+path="src/lib.rs"
+name="test-winit-glutin"
+required-features = [ "desktop" ]

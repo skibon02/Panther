@@ -30,18 +30,27 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
+//    externalNativeBuild {
+//        cmake {
+//            path = file("src/main/cpp/CMakeLists.txt")
+//            version = "3.22.1"
+//        }
+//    }
     buildFeatures {
         viewBinding = true
     }
 }
 
 dependencies {
+    val activity_version = "1.8.2"
+
+    implementation("androidx.activity:activity:$activity_version")
+    implementation("androidx.activity:activity-ktx:$activity_version")
+
+    val fragment_version = "1.6.2"
+
+    implementation("androidx.fragment:fragment:$fragment_version")
+    implementation("androidx.fragment:fragment-ktx:$fragment_version")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
