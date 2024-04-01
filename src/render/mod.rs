@@ -48,6 +48,15 @@ pub fn check_gl_errors(gl: &gl::Gl) {
 }
 pub static SURFACE_WIDTH: AtomicU32 = AtomicU32::new(0);
 pub static SURFACE_HEIGHT: AtomicU32 = AtomicU32::new(0);
+pub fn get_surface_y_ratio() -> f64 {
+    let width = SURFACE_WIDTH.load(Ordering::Relaxed);
+    let height = SURFACE_HEIGHT.load(Ordering::Relaxed);
+    if height == 0 {
+        return 0.0;
+    }
+    width as f64 / height as f64
+
+}
 #[derive(Debug)]
 pub enum MyInputEvent {
     Back,

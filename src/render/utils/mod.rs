@@ -1,2 +1,2 @@
 pub mod circle_animation;
-mod position;
+pub mod position;

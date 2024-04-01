@@ -1,10 +1,10 @@
 use std::mem;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::Ordering;
-use crate::render::{ create_shader, gl, SURFACE_HEIGHT, SURFACE_WIDTH};
+use crate::render::{create_shader, get_surface_y_ratio, gl};
 use crate::render::gl::{BLEND, ONE_MINUS_SRC_ALPHA, SRC_ALPHA};
 use crate::render::gl::types::{GLsizei, GLsizeiptr, GLuint};
 use crate::render::objects::SQUAD_VERTEX_DATA;
+use crate::render::utils::position::FreePosition;
 
 
 const VERTEX_SHADER_SOURCE: &[u8] = include_bytes!("box-vert.glsl");
@@ -20,7 +20,7 @@ pub struct Squad {
 
 
 impl Squad {
-    pub fn new(gl_mtx: Arc<Mutex<gl::Gl>>, color: (f32, f32, f32), bounds: (f32, f32, f32, f32)) -> Self {
+    pub fn new(gl_mtx: Arc<Mutex<gl::Gl>>, color: (f32, f32, f32), pos: FreePosition) -> Self {
         unsafe {
             let gl = gl_mtx.lock().unwrap();
 
@@ -61,8 +61,8 @@ impl Squad {
 
 
             let ratio_location = gl.GetUniformLocation(program, b"y_ratio\0".as_ptr() as *const _);
-            let dims = (SURFACE_WIDTH.load(Ordering::Relaxed) as f32, SURFACE_HEIGHT.load(Ordering::Relaxed) as f32);
-            gl.Uniform1f(ratio_location, dims.1 / dims.0);
+            let ratio = get_surface_y_ratio();
+            gl.Uniform1f(ratio_location, ratio as f32);
 
             let pos_attrib = gl.GetAttribLocation(program, b"position\0".as_ptr() as *const _);
             gl.VertexAttribPointer(
@@ -79,7 +79,8 @@ impl Squad {
             gl.Uniform3f(color_location, color.0, color.1, color.2);
 
             let bounds_location = gl.GetUniformLocation(program, b"bounds\0".as_ptr() as *const _);
-            gl.Uniform4f(bounds_location, bounds.0, bounds.1, bounds.2, bounds.3);
+            let pos = pos.get();
+            gl.Uniform4f(bounds_location, pos.0 as f32, pos.1 as f32, pos.2 as f32, pos.3 as f32);
 
             mem::drop(gl);
             Self {
@@ -93,7 +94,7 @@ impl Squad {
     }
 
     pub fn new_bg(gl_mtx: Arc<Mutex<gl::Gl>>, color: (f32, f32, f32)) -> Self {
-        Self::new(gl_mtx, color, (0.0, 1.0, 0.0, 1.0))
+        Self::new(gl_mtx, color, FreePosition::new().width(1.0).height(get_surface_y_ratio()))
     }
 
     pub fn draw(&mut self, texture_id: GLuint) {
