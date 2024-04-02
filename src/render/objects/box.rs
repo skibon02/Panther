@@ -98,7 +98,6 @@ impl Squad {
     }
 
     pub fn draw(&mut self, texture_id: GLuint) {
-
         let gl = self.gl_mtx.lock().unwrap();
 
 
@@ -129,10 +128,12 @@ impl Squad {
 impl Drop for Squad {
     fn drop(&mut self) {
         let gl = self.gl_mtx.lock().unwrap();
+
         unsafe {
             gl.DeleteProgram(self.program);
-            gl.DeleteBuffers(1, &self.vbo);
             gl.DeleteVertexArrays(1, &self.vao);
+            gl.DeleteBuffers(1, &self.vbo);
+            gl.DeleteFramebuffers(1, &self.fbo);
         }
     }
 }

@@ -1,24 +1,26 @@
 use std::mem;
 use std::sync::{Arc, Mutex};
+use image::GenericImageView;
+use log::info;
 use crate::render::{create_shader, get_surface_y_ratio, gl};
 use crate::render::gl::{BLEND, ONE_MINUS_SRC_ALPHA, SRC_ALPHA};
 use crate::render::gl::types::{GLsizei, GLsizeiptr, GLuint};
 use crate::render::objects::SQUAD_VERTEX_DATA;
-use crate::render::utils::position::{FixedPosition, FreePosition};
-
+use crate::render::utils::position::FixedPosition;
 
 const VERTEX_SHADER_SOURCE: &[u8] = include_bytes!("image-vert.glsl");
 const FRAGMENT_SHADER_SOURCE: &[u8] = include_bytes!("image-frag.glsl");
 
-pub struct Squad {
+pub struct Image {
     program: GLuint,
     vao: GLuint,
     vbo: GLuint,
     fbo: GLuint,
     gl_mtx: Arc<Mutex<gl::Gl>>,
+    img_texture: GLuint,
 }
 
-impl Squad {
+impl Image {
     pub fn new(gl_mtx: Arc<Mutex<gl::Gl>>, path: String, pos: FixedPosition) -> Self {
         unsafe {
             let gl = gl_mtx.lock().unwrap();
@@ -58,6 +60,32 @@ impl Squad {
                 gl::STATIC_DRAW,
             );
 
+            //load image
+
+            let image = image::load_from_memory(include_bytes!("../../../resources/panther.png")).unwrap();
+
+            let (width, height) = image.dimensions();
+            let image_data = image.to_rgba8().into_raw();
+
+            info!("Image panther.png decoded! Width: {}, height: {}", width, height);
+
+            let mut texture_id = 0;
+            gl.GenTextures(1, &mut texture_id);
+            gl.BindTexture(gl::TEXTURE_2D, texture_id);
+            gl.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+            gl.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+            gl.TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                gl::RGBA as i32,
+                width as i32,
+                height as i32,
+                0,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                image_data.as_ptr() as *const _,
+            );
+
 
             let ratio_location = gl.GetUniformLocation(program, b"y_ratio\0".as_ptr() as *const _);
             let ratio = get_surface_y_ratio();
@@ -75,7 +103,15 @@ impl Squad {
             gl.EnableVertexAttribArray(pos_attrib as GLuint);
 
             let bounds_location = gl.GetUniformLocation(program, b"bounds\0".as_ptr() as *const _);
-            let pos = pos.get(1.0);
+
+            gl.ActiveTexture(gl::TEXTURE1);
+            gl.BindTexture(gl::TEXTURE_2D, texture_id);
+            let tex_location = gl.GetUniformLocation(program, b"tex\0".as_ptr() as *const _);
+            gl.Uniform1i(tex_location, 1);
+
+            let aspect_ratio = height as f64 / width as f64;
+            let pos = pos.get(aspect_ratio);
+            info!("[img] pos: {:?}", pos);
             gl.Uniform4f(bounds_location, pos.0 as f32, pos.1 as f32, pos.2 as f32, pos.3 as f32);
 
             mem::drop(gl);
@@ -85,6 +121,7 @@ impl Squad {
                 vbo,
                 gl_mtx,
                 fbo,
+                img_texture: texture_id,
             }
         }
     }
@@ -122,13 +159,15 @@ impl Squad {
 }
 
 
-impl Drop for Squad {
+impl Drop for Image {
     fn drop(&mut self) {
         let gl = self.gl_mtx.lock().unwrap();
         unsafe {
             gl.DeleteProgram(self.program);
-            gl.DeleteBuffers(1, &self.vbo);
             gl.DeleteVertexArrays(1, &self.vao);
+            gl.DeleteBuffers(1, &self.vbo);
+            gl.DeleteFramebuffers(1, &self.fbo);
+            gl.DeleteTextures(1, &self.img_texture)
         }
     }
 }

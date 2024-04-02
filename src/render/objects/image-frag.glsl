@@ -1,21 +1,20 @@
 #version 320 es
 precision highp float;
 
-uniform vec3 color;
+uniform sampler2D tex;
 uniform vec4 bounds;
-uniform float y_ratio;
 
-in vec2 v_position; // normalized position where x 0..1, y 0..v_y_ratio
+in vec2 v_position;
 
 out vec4 fragColor;
 
 void main() {
-    float x = v_position.x;
-    float y = v_position.y / y_ratio;
+    float x = (v_position.x - bounds.x) / bounds.z;
+    float y = 1.0 - (v_position.y - bounds.y) / bounds.w;
 
-    if (x < bounds.x || x > bounds.y || y < bounds.z || y > bounds.w) {
+    if (x < 0.0 || y < 0.0 || x > 1.0 || y > 1.0) {
         discard;
     }
 
-    fragColor = vec4(color, 1.0);
+    fragColor = texture(tex, vec2(x, y));
 }

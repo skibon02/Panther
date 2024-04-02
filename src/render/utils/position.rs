@@ -88,11 +88,11 @@ impl FixedPosition {
         let bottom = self.bottom.unwrap_or(0.0);
         match (self.width, self.height) {
             (Some(w), None) => {
-                let h = w / ratio;
+                let h = w * ratio;
                 (left, bottom, w, h)
             },
             (None, Some(h)) => {
-                let w = h * ratio;
+                let w = h / ratio;
                 (left, bottom, w, h)
             },
             (Some(w), Some(h)) => {

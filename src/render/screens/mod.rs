@@ -6,7 +6,7 @@ use std::mem;
 use std::sync::{Arc, Mutex};
 use log::{error, info};
 use crate::render::{check_gl_errors, create_shader, gl};
-use crate::render::gl::{BLEND, COLOR, ONE_MINUS_SRC_ALPHA, SRC_ALPHA};
+use crate::render::gl::{BLEND, COLOR, ONE_MINUS_SRC_ALPHA, SRC_ALPHA, UNPACK_ALIGNMENT};
 use crate::render::gl::types::{GLint, GLsizei, GLsizeiptr, GLuint};
 use crate::render::objects::SQUAD_VERTEX_DATA;
 use crate::render::utils::circle_animation::CircleAnimation;
@@ -64,6 +64,8 @@ impl ScreenRendering {
             let fragment_shader = create_shader(&gl, gl::FRAGMENT_SHADER, FRAGMENT_SHADER_SOURCE);
 
             let program = gl.CreateProgram();
+
+            gl.PixelStorei(UNPACK_ALIGNMENT, 1);
 
             gl.AttachShader(program, vertex_shader);
             gl.AttachShader(program, fragment_shader);
@@ -195,6 +197,20 @@ impl ScreenRendering {
             gl.Uniform3f(self.circle, circ_params.0, circ_params.1, circ_params.2);
 
             gl.DrawArrays(gl::TRIANGLES, 0, 6);
+        }
+    }
+}
+
+impl Drop for ScreenRendering {
+    fn drop(&mut self) {
+        let gl = self.gl_mtx.lock().unwrap();
+
+        unsafe {
+            gl.DeleteProgram(self.program);
+            gl.DeleteVertexArrays(1, &self.vao);
+            gl.DeleteBuffers(1, &self.vbo);
+            gl.DeleteFramebuffers(1, &self.fbo);
+            gl.DeleteTextures(1, &self.texture);
         }
     }
 }

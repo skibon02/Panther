@@ -11,9 +11,9 @@ out vec4 fragColor;
 
 void main() {
     float x = v_position.x;
-    float y = v_position.y / y_ratio;
+    float y = v_position.y;
 
-    if (x < bounds.x || x > bounds.y || y < bounds.z || y > bounds.w) {
+    if (x < bounds.x || y < bounds.y || x - bounds.x > bounds.z || y - bounds.y > bounds.w) {
         discard;
     }
 
