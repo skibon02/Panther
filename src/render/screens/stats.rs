@@ -2,16 +2,21 @@ use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 use crate::render::{gl, SURFACE_HEIGHT, SURFACE_WIDTH};
+use crate::render::images::get_gif;
+use crate::render::objects::animated_image::AnimatedImage;
 use crate::render::objects::r#box::Squad;
 use crate::render::screens::{ScreenManagementCmd, ScreenRendering, ScreenTrait};
 use crate::render::screens::records::RecordsScreen;
 use crate::render::utils::circle_animation::CircleAnimation;
+use crate::render::utils::position::FixedPosition;
 
 
 pub struct StatsScreen {
     gl_mtx: Arc<Mutex<gl::Gl>>,
     bg_squad: Squad,
     screen_rendering: ScreenRendering,
+
+    img: AnimatedImage,
 
     exit_request: Arc<AtomicBool>,
     start: Instant,
@@ -23,6 +28,9 @@ impl StatsScreen {
 
         let dims = (SURFACE_WIDTH.load(Ordering::Relaxed), SURFACE_HEIGHT.load(Ordering::Relaxed));
 
+        let img_pos = FixedPosition::new().width(1.0).bottom(1.0);
+        let img = AnimatedImage::new(gl_mtx.clone(), get_gif("walking").unwrap(), img_pos);
+
         let circ_anim = CircleAnimation::new(1.0, [(0.5, 0.5, 0.5), (-0.5, -0.2, 0.0), (0.0, 2.0, 3.0)]);
         let screen_rendering = ScreenRendering::new(gl_mtx.clone(), dims, circ_anim);
 
@@ -31,7 +39,8 @@ impl StatsScreen {
             bg_squad: squad,
             exit_request,
             start: Instant::now(),
-            screen_rendering
+            screen_rendering,
+            img
         }
     }
 }
@@ -49,6 +58,8 @@ impl ScreenTrait for StatsScreen {
         self.screen_rendering.clear_texture();
 
         self.bg_squad.draw(texture_id);
+        let frame = (self.start.elapsed().as_millis() / 80) as usize % self.img.img_count;
+        self.img.draw(texture_id, frame);
 
         self.screen_rendering.present();
     }

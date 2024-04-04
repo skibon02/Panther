@@ -4,25 +4,30 @@ use image::{DynamicImage, GenericImageView};
 use log::info;
 use crate::render::{create_shader, get_surface_y_ratio, gl};
 use crate::render::gl::{BLEND, ONE_MINUS_SRC_ALPHA, SRC_ALPHA};
-use crate::render::gl::types::{GLsizei, GLsizeiptr, GLuint};
+use crate::render::gl::types::{GLint, GLsizei, GLsizeiptr, GLuint};
 use crate::render::images::ImageData;
 use crate::render::objects::SQUAD_VERTEX_DATA;
 use crate::render::utils::position::FixedPosition;
 
-const VERTEX_SHADER_SOURCE: &[u8] = include_bytes!("image-vert.glsl");
-const FRAGMENT_SHADER_SOURCE: &[u8] = include_bytes!("image-frag.glsl");
+const VERTEX_SHADER_SOURCE: &[u8] = include_bytes!("animated-image-vert.glsl");
+const FRAGMENT_SHADER_SOURCE: &[u8] = include_bytes!("animated-image-frag.glsl");
 
-pub struct Image {
+pub struct AnimatedImage {
     program: GLuint,
     vao: GLuint,
     vbo: GLuint,
     fbo: GLuint,
     gl_mtx: Arc<Mutex<gl::Gl>>,
-    img_texture: GLuint,
+
+    img_textures: Vec<GLuint>,
+    pub img_count: usize,
+
+    u_texture_loc: GLint,
+    dims: (u32, u32)
 }
 
-impl Image {
-    pub fn new(gl_mtx: Arc<Mutex<gl::Gl>>, img: ImageData, pos: FixedPosition) -> Self {
+impl AnimatedImage {
+    pub fn new(gl_mtx: Arc<Mutex<gl::Gl>>, imgs: Vec<ImageData>, pos: FixedPosition) -> Self {
         unsafe {
             let gl = gl_mtx.lock().unwrap();
 
@@ -79,31 +84,38 @@ impl Image {
 
             let bounds_location = gl.GetUniformLocation(program, b"bounds\0".as_ptr() as *const _);
 
-            let tex_location = gl.GetUniformLocation(program, b"tex\0".as_ptr() as *const _);
-            gl.Uniform1i(tex_location, 1);
+            let u_texture_loc = gl.GetUniformLocation(program, b"tex\0".as_ptr() as *const _);
+            gl.Uniform1i(u_texture_loc, 1);
 
-            let aspect_ratio = img.height as f64 / img.width as f64;
+            let dims = (imgs[0].width, imgs[1].height);
+            let aspect_ratio = imgs[0].height as f64 / imgs[0].width as f64;
             let pos = pos.get(aspect_ratio);
             info!("[img] pos: {:?}", pos);
             gl.Uniform4f(bounds_location, pos.0 as f32, pos.1 as f32, pos.2 as f32, pos.3 as f32);
 
             mem::drop(gl);
+
+            let img_textures: Vec<_> = imgs.into_iter().map(|i| i.texture_id).collect();
+            let img_count = img_textures.len();
             Self {
                 program,
                 vao,
                 vbo,
                 gl_mtx,
                 fbo,
-                img_texture: img.texture_id,
+                img_textures,
+                u_texture_loc,
+                dims,
+                img_count,
             }
         }
     }
 
-    pub fn new_bg(gl_mtx: Arc<Mutex<gl::Gl>>, img: ImageData) -> Self {
-        Self::new(gl_mtx, img, FixedPosition::new().width(1.0))
+    pub fn new_bg(gl_mtx: Arc<Mutex<gl::Gl>>, imgs: Vec<ImageData>) -> Self {
+        Self::new(gl_mtx, imgs, FixedPosition::new().width(1.0))
     }
 
-    pub fn draw(&mut self, texture_id: GLuint) {
+    pub fn draw(&mut self, texture_id: GLuint, frame: usize) {
 
         let gl = self.gl_mtx.lock().unwrap();
 
@@ -124,7 +136,7 @@ impl Image {
             gl.BindBuffer(gl::ARRAY_BUFFER, self.vbo);
 
             gl.ActiveTexture(gl::TEXTURE1);
-            gl.BindTexture(gl::TEXTURE_2D, self.img_texture);
+            gl.BindTexture(gl::TEXTURE_2D, self.img_textures[frame]);
 
             // let params = self.circ_anim.cur();
             // gl.Uniform3f(self.circle, params.0, params.1, params.2);
@@ -135,7 +147,7 @@ impl Image {
 }
 
 
-impl Drop for Image {
+impl Drop for AnimatedImage {
     fn drop(&mut self) {
         let gl = self.gl_mtx.lock().unwrap();
         unsafe {

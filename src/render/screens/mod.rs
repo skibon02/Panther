@@ -110,12 +110,12 @@ impl ScreenRendering {
             gl.GenFramebuffers(1, &mut fbo);
 
 
-            gl.ActiveTexture(gl::TEXTURE0);
             // Generate a texture ID
             let mut texture = std::mem::zeroed();
             gl.GenTextures(1, &mut texture);
 
             // Bind the texture
+            gl.ActiveTexture(gl::TEXTURE0);
             gl.BindTexture(gl::TEXTURE_2D, texture);
 
             gl.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
@@ -191,10 +191,12 @@ impl ScreenRendering {
 
             gl.BindFramebuffer(gl::FRAMEBUFFER, 0);
 
+            gl.ActiveTexture(gl::TEXTURE0);
             gl.BindTexture(gl::TEXTURE_2D, self.texture);// because we use this texture in rendering
 
             let circ_params = self.circle_anim.cur();
             gl.Uniform3f(self.circle, circ_params.0, circ_params.1, circ_params.2);
+
 
             gl.DrawArrays(gl::TRIANGLES, 0, 6);
         }

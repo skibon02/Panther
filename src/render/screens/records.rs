@@ -2,6 +2,8 @@ use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 use crate::render::{gl, SURFACE_HEIGHT, SURFACE_WIDTH};
+use crate::render::images::{get_gif, get_image, PANTHER_HD};
+use crate::render::objects::animated_image::AnimatedImage;
 use crate::render::objects::image::Image;
 use crate::render::objects::r#box::Squad;
 use crate::render::screens::{ScreenManagementCmd, ScreenRendering, ScreenTrait};
@@ -13,7 +15,7 @@ use crate::render::utils::position::FixedPosition;
 pub struct RecordsScreen {
     gl_mtx: Arc<Mutex<gl::Gl>>,
     bg_squad: Squad,
-    bg_img: Image,
+    bg_img: AnimatedImage,
 
     screen_rendering: ScreenRendering,
 
@@ -26,7 +28,7 @@ impl RecordsScreen {
         let squad = Squad::new_bg(gl_mtx.clone(), (0.6, 0.8, 0.2));
 
         let img_pos = FixedPosition::new().width(0.5).left(0.5).bottom(0.0);
-        let img = Image::new(gl_mtx.clone(), "panther.png".to_string(), img_pos);
+        let img = AnimatedImage::new(gl_mtx.clone(), get_gif("running").unwrap(), img_pos);
 
         let dims = (SURFACE_WIDTH.load(Ordering::Relaxed), SURFACE_HEIGHT.load(Ordering::Relaxed));
 
@@ -58,7 +60,8 @@ impl ScreenTrait for RecordsScreen {
         self.screen_rendering.clear_texture();
 
         self.bg_squad.draw(texture_id);
-        self.bg_img.draw(texture_id);
+        let img_frame = (self.start.elapsed().as_millis() / 50) as usize % self.bg_img.img_count;
+        self.bg_img.draw(texture_id, img_frame);
 
         self.screen_rendering.present();
     }
