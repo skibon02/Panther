@@ -2,7 +2,7 @@ use std::mem;
 use std::sync::{Arc, Mutex};
 use crate::render::{create_shader, get_surface_y_ratio, gl};
 use crate::render::gl::{BLEND, ONE_MINUS_SRC_ALPHA, SRC_ALPHA};
-use crate::render::gl::types::{GLsizei, GLsizeiptr, GLuint};
+use crate::render::gl::types::{GLint, GLsizei, GLsizeiptr, GLuint};
 use crate::render::objects::SQUAD_VERTEX_DATA;
 use crate::render::utils::position::FreePosition;
 
@@ -15,14 +15,16 @@ pub struct Squad {
     vao: GLuint,
     vbo: GLuint,
     fbo: GLuint,
-    gl_mtx: Arc<Mutex<gl::Gl>>,
+    gl: Arc<gl::Gl>,
+
+    u_color_loc: GLint,
+    color: (f32, f32, f32)
 }
 
 
 impl Squad {
-    pub fn new(gl_mtx: Arc<Mutex<gl::Gl>>, color: (f32, f32, f32), pos: FreePosition) -> Self {
+    pub fn new(gl: Arc<gl::Gl>, color: (f32, f32, f32), pos: FreePosition) -> Self {
         unsafe {
-            let gl = gl_mtx.lock().unwrap();
 
             let vertex_shader = create_shader(&gl, gl::VERTEX_SHADER, VERTEX_SHADER_SOURCE);
             let fragment_shader = create_shader(&gl, gl::FRAGMENT_SHADER, FRAGMENT_SHADER_SOURCE);
@@ -75,31 +77,39 @@ impl Squad {
             );
             gl.EnableVertexAttribArray(pos_attrib as GLuint);
 
-            let color_location = gl.GetUniformLocation(program, b"color\0".as_ptr() as *const _);
-            gl.Uniform3f(color_location, color.0, color.1, color.2);
+            let u_color_loc = gl.GetUniformLocation(program, b"color\0".as_ptr() as *const _);
+            gl.Uniform3f(u_color_loc, color.0, color.1, color.2);
 
             let bounds_location = gl.GetUniformLocation(program, b"bounds\0".as_ptr() as *const _);
             let pos = pos.get();
             gl.Uniform4f(bounds_location, pos.0 as f32, pos.1 as f32, pos.2 as f32, pos.3 as f32);
 
-            mem::drop(gl);
             Self {
                 program,
                 vao,
                 vbo,
-                gl_mtx,
+                gl,
                 fbo,
+                u_color_loc,
+                color
             }
         }
     }
 
-    pub fn new_bg(gl_mtx: Arc<Mutex<gl::Gl>>, color: (f32, f32, f32)) -> Self {
-        Self::new(gl_mtx, color, FreePosition::new().width(1.0).height(get_surface_y_ratio()))
+    pub fn new_bg(gl: Arc<gl::Gl>, color: (f32, f32, f32)) -> Self {
+        Self::new(gl, color, FreePosition::new().width(1.0).height(get_surface_y_ratio()))
+    }
+
+    pub fn set_color(&mut self, color: (f32, f32, f32)) {
+        let gl = &self.gl;
+        unsafe {
+            gl.UseProgram(self.program);
+            gl.Uniform3f(self.u_color_loc, color.0, color.1, color.2);
+        }
     }
 
     pub fn draw(&mut self, texture_id: GLuint) {
-        let gl = self.gl_mtx.lock().unwrap();
-
+        let gl = &self.gl;
 
         // Check if the framebuffer is complete
         // let status = unsafe { gl.CheckFramebufferStatus(gl::FRAMEBUFFER) };
@@ -127,7 +137,7 @@ impl Squad {
 
 impl Drop for Squad {
     fn drop(&mut self) {
-        let gl = self.gl_mtx.lock().unwrap();
+        let gl = &self.gl;
 
         unsafe {
             gl.DeleteProgram(self.program);

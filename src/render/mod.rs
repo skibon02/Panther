@@ -68,7 +68,7 @@ pub enum MyInputEvent {
 pub struct AppState {
     screens: Vec<Box<dyn ScreenTrait>>,
     exit_request: Arc<AtomicBool>,
-    gl: Option<Arc<Mutex<gl::Gl>>>,
+    gl: Option<Arc<gl::Gl>>,
 }
 
 impl AppState {
@@ -105,7 +105,7 @@ impl AppState {
                 println!("Shaders version on {}", shaders_version.to_string_lossy());
             }
 
-            Arc::new(Mutex::new(gl))
+            Arc::new(gl)
         });
 
         SURFACE_WIDTH.store(dims.0, Ordering::Relaxed);
@@ -135,8 +135,7 @@ impl AppState {
     pub fn draw(&mut self) {
 
         unsafe {
-
-            let gl = self.gl.as_ref().unwrap().lock().unwrap();
+            let gl = self.gl.as_ref().unwrap();
             gl.ClearColor(0.1, 0.1, 0.1, 1.0);
             gl.Clear(gl::COLOR_BUFFER_BIT);
         }
@@ -156,7 +155,7 @@ impl AppState {
                 i += 1;
             }
         }
-        check_gl_errors(&self.gl.as_ref().unwrap().lock().unwrap());
+        check_gl_errors(&self.gl.as_ref().unwrap());
     }
 
     pub fn pop_screen(&mut self) {

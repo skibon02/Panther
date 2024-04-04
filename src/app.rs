@@ -12,7 +12,7 @@ use glutin::surface::{SurfaceAttributesBuilder, WindowSurface};
 use raw_window_handle::{HasRawWindowHandle, RawDisplayHandle, RawWindowHandle};
 use winit::dpi::PhysicalPosition;
 use winit::event_loop::EventLoopWindowTarget;
-use crate::render::AppState;
+use crate::render::{AppState, get_surface_y_ratio, SURFACE_HEIGHT, SURFACE_WIDTH};
 use crate::render::screens::ScreenManagementCmd;
 
 
@@ -256,9 +256,11 @@ impl App {
 
     pub fn handle_touch(&mut self, id: u64, location: PhysicalPosition<f64>, phase: winit::event::TouchPhase) {
         if let Some(screen) = self.app_state.get_input_screen() {
+            let screen_width = SURFACE_WIDTH.load(Ordering::Relaxed) as f64;
+            let y_ratio = get_surface_y_ratio();
             match phase {
                 winit::event::TouchPhase::Started => {
-                    let should_send_move = screen.start_scroll((location.x, location.y));
+                    let should_send_move = screen.start_scroll((location.x / screen_width, y_ratio - location.y / screen_width));
                     self.touch_state.insert(id, TouchState::MovingStart(location, 0.0, should_send_move));
                 }
                 winit::event::TouchPhase::Moved => {
@@ -268,7 +270,7 @@ impl App {
                                 //trigger to switch to moving state
                                 let diff = (location.x - prev_pos.x, location.y - prev_pos.y);
                                 if should_send_move {
-                                    screen.scroll(diff);
+                                    screen.scroll((diff.0 / screen_width, -diff.1 / screen_width));
                                 }
                                 if distance > 50.0 {
                                     *touch_state = TouchState::Moving(location, should_send_move);
@@ -281,7 +283,7 @@ impl App {
                             TouchState::Moving(prev_pos, should_send_move) => {
                                 let diff = (location.x - prev_pos.x, location.y - prev_pos.y);
                                 if should_send_move {
-                                    screen.scroll(diff);
+                                    screen.scroll((diff.0 / screen_width, -diff.1 / screen_width));
                                 }
                                 //just update location
                                 *touch_state = TouchState::Moving(location, should_send_move);
@@ -293,7 +295,7 @@ impl App {
                     if let Some(touch_state) = self.touch_state.remove(&id) {
                         match touch_state {
                             TouchState::MovingStart(_, _, _) => {
-                                match screen.press((location.x, location.y)) {
+                                match screen.press((location.x / screen_width, y_ratio - location.y / screen_width)) {
                                     ScreenManagementCmd::PushScreen(screen) => {
                                         self.app_state.push_screen(screen);
                                     }

@@ -43,7 +43,7 @@ pub struct ScreenRendering {
     vao: GLuint,
     vbo: GLuint,
     fbo: GLuint,
-    gl_mtx: Arc<Mutex<gl::Gl>>,
+    gl: Arc<gl::Gl>,
     texture: GLuint,
     dims: (u32, u32),
 
@@ -56,8 +56,7 @@ const VERTEX_SHADER_SOURCE: &[u8] = include_bytes!("present-vert.glsl");
 const FRAGMENT_SHADER_SOURCE: &[u8] = include_bytes!("present-frag.glsl");
 
 impl ScreenRendering {
-    pub fn new(gl_mtx: Arc<Mutex<gl::Gl>>, dims: (u32, u32), mut circle_anim: CircleAnimation) -> Self {
-        let gl = gl_mtx.lock().unwrap();
+    pub fn new(gl: Arc<gl::Gl>, dims: (u32, u32), mut circle_anim: CircleAnimation) -> Self {
 
         unsafe {
             let vertex_shader = create_shader(&gl, gl::VERTEX_SHADER, VERTEX_SHADER_SOURCE);
@@ -146,13 +145,12 @@ impl ScreenRendering {
             circle_anim.start();
 
 
-            drop(gl);
             Self {
                 program,
                 vao,
                 vbo,
                 fbo,
-                gl_mtx,
+                gl,
                 texture,
                 dims,
 
@@ -166,7 +164,7 @@ impl ScreenRendering {
         self.texture
     }
     pub fn clear_texture(&self) {
-        let gl = self.gl_mtx.lock().unwrap();
+        let gl = &self.gl;
 
         unsafe {
             gl.BindFramebuffer(gl::FRAMEBUFFER, self.fbo);
@@ -182,7 +180,7 @@ impl ScreenRendering {
     }
 
     pub fn present(&self) {
-        let gl = self.gl_mtx.lock().unwrap();
+        let gl = &self.gl;
 
         unsafe {
             gl.UseProgram(self.program);
@@ -205,7 +203,7 @@ impl ScreenRendering {
 
 impl Drop for ScreenRendering {
     fn drop(&mut self) {
-        let gl = self.gl_mtx.lock().unwrap();
+        let gl = &self.gl;
 
         unsafe {
             gl.DeleteProgram(self.program);
