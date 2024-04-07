@@ -17,14 +17,13 @@ pub struct Image {
     vao: GLuint,
     vbo: GLuint,
     fbo: GLuint,
-    gl_mtx: Arc<Mutex<gl::Gl>>,
+    gl: Arc<gl::Gl>,
     img_texture: GLuint,
 }
 
 impl Image {
-    pub fn new(gl_mtx: Arc<Mutex<gl::Gl>>, img: ImageData, pos: FixedPosition) -> Self {
+    pub fn new(gl: Arc<gl::Gl>, img: ImageData, pos: FixedPosition) -> Self {
         unsafe {
-            let gl = gl_mtx.lock().unwrap();
 
             let vertex_shader = create_shader(&gl, gl::VERTEX_SHADER, VERTEX_SHADER_SOURCE);
             let fragment_shader = create_shader(&gl, gl::FRAGMENT_SHADER, FRAGMENT_SHADER_SOURCE);
@@ -87,25 +86,23 @@ impl Image {
             info!("[img] pos: {:?}", pos);
             gl.Uniform4f(bounds_location, pos.0 as f32, pos.1 as f32, pos.2 as f32, pos.3 as f32);
 
-            mem::drop(gl);
             Self {
                 program,
                 vao,
                 vbo,
-                gl_mtx,
+                gl,
                 fbo,
                 img_texture: img.texture_id,
             }
         }
     }
 
-    pub fn new_bg(gl_mtx: Arc<Mutex<gl::Gl>>, img: ImageData) -> Self {
-        Self::new(gl_mtx, img, FixedPosition::new().width(1.0))
+    pub fn new_bg(gl: Arc<gl::Gl>, img: ImageData) -> Self {
+        Self::new(gl, img, FixedPosition::new().width(1.0))
     }
 
     pub fn draw(&mut self, texture_id: GLuint) {
-
-        let gl = self.gl_mtx.lock().unwrap();
+        let gl = &self.gl;
 
 
         // Check if the framebuffer is complete
@@ -137,7 +134,8 @@ impl Image {
 
 impl Drop for Image {
     fn drop(&mut self) {
-        let gl = self.gl_mtx.lock().unwrap();
+        let gl = &self.gl;
+
         unsafe {
             gl.DeleteProgram(self.program);
             gl.DeleteVertexArrays(1, &self.vao);

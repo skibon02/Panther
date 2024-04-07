@@ -31,7 +31,7 @@ fn load_image(gl: &Gles2, image: DynamicImage) -> ImageData {
     let (width, height) = image.dimensions();
     let image_data = image.to_rgba8().into_raw();
 
-    info!("Image panther.png decoded! Width: {}, height: {}", width, height);
+    info!("Image decoded! Width: {}, height: {}", width, height);
 
     let mut texture_id = 0;
     unsafe {

@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU32, Ordering};
 use glutin::display::{Display, GlDisplay};
 use log::{error, info};
 use winit::dpi::PhysicalPosition;
+use crate::render::fonts::load_fonts;
 use crate::render::images::load_images;
 use crate::render::screens::main::MainScreen;
 use crate::render::screens::ScreenTrait;
@@ -12,6 +13,7 @@ pub mod utils;
 pub mod objects;
 pub mod screens;
 mod images;
+mod fonts;
 
 pub mod gl {
     #![allow(clippy::all)]
@@ -91,8 +93,8 @@ impl AppState {
                 gl_display.get_proc_address(symbol.as_c_str()).cast()
             });
 
-
             load_images(&gl);
+            load_fonts(&gl);
 
             if let Some(renderer) = get_gl_string(&gl, gl::RENDERER) {
                 println!("Running on {}", renderer.to_string_lossy());
@@ -133,7 +135,6 @@ impl AppState {
 
     // called repeatedly from outside
     pub fn draw(&mut self) {
-
         unsafe {
             let gl = self.gl.as_ref().unwrap();
             gl.ClearColor(0.1, 0.1, 0.1, 1.0);

@@ -1,6 +1,7 @@
 pub mod image;
 pub mod r#box;
 pub mod animated_image;
+pub mod textbox;
 
 
 #[rustfmt::skip]
