@@ -1,15 +1,19 @@
 use std::collections::BTreeMap;
 use std::io::Cursor;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{OnceLock};
 use image::{AnimationDecoder, DynamicImage, GenericImageView};
 use image::codecs::gif::GifDecoder;
-use log::info;
+use log::{debug, info};
 use crate::render::gl;
 use crate::render::gl::Gles2;
 use crate::render::gl::types::GLuint;
 
 pub static PANTHER_HD: &[u8] = include_bytes!("../../resources/panther_hd.png");
 pub static PANTHER_LOGO: &[u8] = include_bytes!("../../resources/panther_logo.png");
+pub static HOME: &[u8] = include_bytes!("../../resources/home.png");
+pub static RECORDS: &[u8] = include_bytes!("../../resources/records.png");
+pub static STATS: &[u8] = include_bytes!("../../resources/stats.png");
+pub static PLAY: &[u8] = include_bytes!("../../resources/play.png");
 
 pub static GIF_RUNNING: &[u8] = include_bytes!("../../resources/running.gif");
 pub static GIF_WALKING: &[u8] = include_bytes!("../../resources/walking.gif");
@@ -31,7 +35,7 @@ fn load_image(gl: &Gles2, image: DynamicImage) -> ImageData {
     let (width, height) = image.dimensions();
     let image_data = image.to_rgba8().into_raw();
 
-    info!("Image decoded! Width: {}, height: {}", width, height);
+    debug!("Image decoded! Width: {}, height: {}", width, height);
 
     let mut texture_id = 0;
     unsafe {
@@ -74,6 +78,10 @@ impl ImageLoader {
 
         images.insert("panther_hd".to_string(), load_image(gl, image::load_from_memory(PANTHER_HD).unwrap()));
         images.insert("panther_logo".to_string(), load_image(gl, image::load_from_memory(PANTHER_LOGO).unwrap()));
+        images.insert("home".to_string(), load_image(gl, image::load_from_memory(HOME).unwrap()));
+        images.insert("records".to_string(), load_image(gl, image::load_from_memory(RECORDS).unwrap()));
+        images.insert("stats".to_string(), load_image(gl, image::load_from_memory(STATS).unwrap()));
+        images.insert("play".to_string(), load_image(gl, image::load_from_memory(PLAY).unwrap()));
 
         let mut gifs = BTreeMap::new();
 
@@ -101,7 +109,9 @@ impl ImageLoader {
 static IMAGES: OnceLock<ImageLoader> = OnceLock::new();
 
 pub fn load_images(gl: &Gles2) {
+    info!("Loading images & gifs started...");
     IMAGES.get_or_init(|| ImageLoader::new(gl));
+    info!("Loading images & gifs finished!");
 }
 pub fn get_image(name: &str) -> Option<ImageData> {
     IMAGES.get().unwrap().get_image(name)

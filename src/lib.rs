@@ -1,17 +1,24 @@
-use std::sync::Arc;
+use std::sync::{Arc};
 use std::sync::atomic::{AtomicBool, Ordering};
 use jni::{JavaVM, JNIEnv};
 use jni::objects::{JClass, JObject, JObjectArray, JValue};
 use jni::sys::{jdouble, jobject};
-use log::info;
-use raw_window_handle::HasRawDisplayHandle;
+use log::{info, warn};
+use parking_lot::Mutex;
+use winit::application::ApplicationHandler;
 use winit::event::{Event, WindowEvent};
-use winit::event_loop::{ControlFlow, EventLoop, EventLoopBuilder};
+use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopBuilder};
+use winit::keyboard;
+use winit::keyboard::NamedKey;
 use winit::platform::android::activity::AndroidApp;
+use winit::window::WindowId;
 use crate::app::App;
 
 pub mod app;
 pub mod render;
+
+pub static JNI_ENV: Mutex<Option<usize>> = Mutex::new(None);
+pub static ACTIVITY_OBJ: Mutex<Option<JObject>> = Mutex::new(None);
 
 fn set_max_framerate(android_app: &AndroidApp) {
     let vm = unsafe { JavaVM::from_raw(android_app.vm_as_ptr() as _) }.unwrap();
@@ -57,63 +64,50 @@ fn set_max_framerate(android_app: &AndroidApp) {
     //Register GPS
     info!("Registering GPS...");
 
-    // get activity field locationManager
-    let location_helper_instance = env.get_field(activity, "locationHelper", "Lcom/skygrel/panther/LocationHelper;").unwrap().l().unwrap();
+    let raw_env = env.get_raw() as usize;
 
-    // Now call the startLocationUpdates method
-    env.call_method(location_helper_instance, "startLocationUpdates", "()V", &[])
-        .expect("Failed to call startLocationUpdates");
+    JNI_ENV.lock().replace(raw_env);
+    ACTIVITY_OBJ.lock().replace(activity);
 }
 
-
-#[no_mangle]
-pub extern "system" fn Java_com_skygrel_panther_LocationHelper_onLocationUpdate(
-    env: JNIEnv,
-    class: JClass,
-    latitude: jdouble,
-    longitude: jdouble,
-) {
-    // Handle the location update
-    println!("Received location update: Lat {}, Lon {}", latitude, longitude);
+struct WinitApp {
+    app: Option<App>,
+    exit_request: Arc<AtomicBool>,
 }
 
-fn run(event_loop: EventLoop<()>) {
-    info!("Running mainloop...");
+impl WinitApp {
+    pub fn new() -> Self {
+        let exit_request = Arc::new(AtomicBool::new(false));
+        let mut app = Some(App::new(exit_request.clone()));
 
-    let raw_display = event_loop.raw_display_handle();
-
-    let exit_request = Arc::new(AtomicBool::new(false));
-    let mut app = Some(App::new(raw_display, exit_request.clone()));
-
-
-
-
-    event_loop.run(move |event, event_loop, control_flow| {
-        // log::debug!("Received Winit event: {event:?}");
-
-        *control_flow = ControlFlow::Wait;
-        if exit_request.load(Ordering::Relaxed) {
-            info!("Exit requested! Dropping app...");
-            *control_flow = ControlFlow::Exit;
-            app = None;
+        Self {
+            app,
+            exit_request
         }
-        if let Some(app) = app.as_mut() {
-            match event {
-                Event::Resumed => {
-                    app.resume(event_loop);
-                }
-                Event::Suspended => {
-                    log::trace!("Suspended, dropping surface state...");
-                    app.handle_suspend();
-                }
+    }
+}
 
-                Event::WindowEvent {
-                    event: winit::event::WindowEvent::KeyboardInput{
-                        input: winit::event::KeyboardInput {
-                            scancode: 0,
-                            state: winit::event::ElementState::Pressed,
-                            ..
-                        },
+impl ApplicationHandler for WinitApp {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        if let Some(app) = &mut self.app {
+            info!("[apploop] Resumed");
+            app.resume(event_loop);
+        }
+    }
+
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
+        if self.exit_request.load(Ordering::Relaxed) {
+            info!("[apploop] Exit requested! Dropping app...");
+            event_loop.exit();
+            self.app = None;
+        }
+        if let Some(app) = &mut self.app {
+            info!("[apploop] New event: {:?}", event);
+            match event {
+                WindowEvent::KeyboardInput{
+                    event: winit::event::KeyEvent {
+                        logical_key: keyboard::Key::Named(NamedKey::GoBack),
+                        state: winit::event::ElementState::Pressed,
                         ..
                     },
                     ..
@@ -121,34 +115,45 @@ fn run(event_loop: EventLoop<()>) {
                     app.handle_back_button();
                 }
 
-                Event::WindowEvent {
-                    event: WindowEvent::Touch(winit::event::Touch {
-                                                  phase,
-                                                  id,
-                                                  location,
-                                                  ..
-                                              }),
+                WindowEvent::Touch(winit::event::Touch {
+                    phase,
+                    id,
+                    location,
                     ..
-                } => {
+                }) => {
                     app.handle_touch(id, location, phase);
                 }
-
-                Event::RedrawRequested(_) => {
+                WindowEvent::CloseRequested => {
+                    app.handle_close_request();
+                },
+                WindowEvent::RedrawRequested => {
                     app.handle_redraw_request();
                 }
-                Event::WindowEvent {
-                    event: WindowEvent::CloseRequested,
-                    ..
-                } => {
-                    app.handle_close_request();
+                WindowEvent::Resized(new_size) => {
+                    app.handle_resize(new_size);
                 }
                 _ => {}
             }
         }
         else {
-            log::warn!("App exiting... Event ignored: {:?}", event);
+            warn!("Exiting... Event ignored: {:?}", event);
         }
-    });
+    }
+
+    fn suspended(&mut self, event_loop: &ActiveEventLoop) {
+        info!("[apploop] Suspended");
+        if let Some(app) = &mut self.app {
+            app.handle_suspend();
+        }
+    }
+}
+
+fn run(event_loop: EventLoop<()>) {
+    let mut winit_app = WinitApp::new();
+
+    info!("Running mainloop...");
+    event_loop.run_app(&mut winit_app).unwrap();
+    info!("Mainloop exited");
 }
 
 #[no_mangle]
@@ -161,6 +166,6 @@ fn android_main(app: AndroidApp) {
 
     set_max_framerate(&app);
 
-    let event_loop = EventLoopBuilder::new().with_android_app(app).build();
+    let event_loop = EventLoopBuilder::default().with_android_app(app).build().unwrap();
     run(event_loop);
 }

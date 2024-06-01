@@ -6,20 +6,18 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use glutin::prelude::*;
 
 use glutin::config::{Config, ConfigSurfaceTypes, ConfigTemplate, ConfigTemplateBuilder};
-use glutin::context::{ContextApi, ContextAttributesBuilder, NotCurrentContext};
-use glutin::display::{Display, DisplayApiPreference, GlDisplay};
-use glutin::surface::{SurfaceAttributesBuilder, WindowSurface};
-use raw_window_handle::{HasRawWindowHandle, RawDisplayHandle, RawWindowHandle};
-use winit::dpi::PhysicalPosition;
-use winit::event_loop::EventLoopWindowTarget;
-use crate::render::{AppState, get_surface_y_ratio, SURFACE_HEIGHT, SURFACE_WIDTH};
+use glutin::context::{ContextApi, ContextAttributesBuilder, NotCurrentContext, PossiblyCurrentContext, Version};
+use glutin::display::{Display, DisplayApiPreference, GetGlDisplay, GlDisplay};
+use glutin::surface::{Surface, SurfaceAttributesBuilder, SwapInterval, WindowSurface};
+use glutin_winit::{DisplayBuilder, GlWindow};
+use winit::raw_window_handle as rwh_06;
+use winit::dpi::{PhysicalPosition, PhysicalSize};
+use winit::event_loop::ActiveEventLoop;
+use winit::raw_window_handle::HasWindowHandle;
+use winit::window::Window;
+use crate::render::{AppState, get_surface_y_ratio, SURFACE_WIDTH};
 use crate::render::screens::ScreenManagementCmd;
 
-
-struct SurfaceState {
-    window: winit::window::Window,
-    surface: glutin::surface::Surface<WindowSurface>,
-}
 
 pub enum TouchState {
     //start, distance, send_move
@@ -28,198 +26,188 @@ pub enum TouchState {
 }
 
 pub struct App {
-    winsys_display: RawDisplayHandle,
-    glutin_display: Option<Display>,
-    surface_state: Option<SurfaceState>,
-    surface_dims: (u32, u32),
-    context: Option<glutin::context::PossiblyCurrentContext>,
-    exit_request: Arc<AtomicBool>,
+    gl_context: Option<PossiblyCurrentContext>,
+    gl_surface: Option<Surface<WindowSurface>>,
+    gl_config: Option<Config>,
+
+    // Window must be dropped at the end.
+    window: Option<Window>,
+
+    surface_dims: PhysicalSize<u32>,
 
     app_state: AppState,
 
+    exit_request: Arc<AtomicBool>,
     touch_state: BTreeMap<u64, TouchState>,
 }
 
 impl App {
-    pub fn new(winsys_display: RawDisplayHandle, exit_request: Arc<AtomicBool>) -> Self {
+    pub fn new(exit_request: Arc<AtomicBool>) -> Self {
         Self {
-            winsys_display,
-            glutin_display: None,
-            surface_state: None,
-            context: None,
+            window: None,
+            gl_context: None,
+            gl_surface: None,
+            gl_config: None,
             app_state: AppState::new(exit_request.clone()),
             exit_request,
             touch_state: BTreeMap::new(),
-            surface_dims: (0, 0)
+            surface_dims: PhysicalSize::new(0, 0)
         }
     }
 }
 
 impl App {
-    #[allow(unused_variables)]
-    fn create_display(
-        raw_display: RawDisplayHandle,
-        raw_window_handle: RawWindowHandle,
-    ) -> Display {
+    fn create_window(&mut self, active_event_loop: &ActiveEventLoop) {
+        // Only Windows requires the window to be present before creating the display.
+        // Other platforms don't really need one.
+        let window_attributes = Window::default_attributes()
+            .with_transparent(true)
+            .with_title("Panther tracker");
 
-        let preference = DisplayApiPreference::Egl;
+        // The template will match only the configurations supporting rendering
+        // to windows.
+        //
+        // XXX We force transparency only on macOS, given that EGL on X11 doesn't
+        // have it, but we still want to show window. The macOS situation is like
+        // that, because we can query only one config at a time on it, but all
+        // normal platforms will return multiple configs, so we can find the config
+        // with transparency ourselves inside the `reduce`.
+        let template =
+            ConfigTemplateBuilder::new().with_alpha_size(8).with_transparency(cfg!(cgl_backend));
 
-        // Create connection to underlying OpenGL client Api.
-        unsafe { Display::new(raw_display, preference).unwrap() }
-    }
+        let display_builder = DisplayBuilder::new().with_window_attributes(Some(window_attributes));
 
-    fn ensure_glutin_display(&mut self, window: &winit::window::Window) {
-        if self.glutin_display.is_none() {
-            let raw_window_handle = window.raw_window_handle();
-            self.glutin_display =
-                Some(Self::create_display(self.winsys_display, raw_window_handle));
+        let (window, gl_config) = display_builder
+            .build(active_event_loop, template, gl_config_picker)
+            .expect("Failed to create Window.");
+
+        if let Some(window) = &window {
+            let size  = window.inner_size();
+            self.surface_dims = size;
         }
-    }
 
-    fn create_compatible_gl_context(
-        glutin_display: &Display,
-        raw_window_handle: RawWindowHandle,
-        config: &Config,
-    ) -> NotCurrentContext {
-        let context_attributes = ContextAttributesBuilder::new().build(Some(raw_window_handle));
+        println!("Picked a config with {} samples", gl_config.num_samples());
+
+        let raw_window_handle = window
+            .as_ref()
+            .and_then(|window| window.window_handle().ok())
+            .map(|handle| handle.as_raw());
+
+        // XXX The display could be obtained from any object created by it, so we can
+        // query it from the config.
+        let gl_display = gl_config.display();
+
+        // The context creation part.
+        let context_attributes = ContextAttributesBuilder::new().build(raw_window_handle);
 
         // Since glutin by default tries to create OpenGL core context, which may not be
         // present we should try gles.
         let fallback_context_attributes = ContextAttributesBuilder::new()
             .with_context_api(ContextApi::Gles(None))
-            .build(Some(raw_window_handle));
-        unsafe {
-            glutin_display
-                .create_context(&config, &context_attributes)
-                .unwrap_or_else(|_| {
-                    glutin_display
-                        .create_context(config, &fallback_context_attributes)
-                        .expect("failed to create context")
-                })
-        }
-    }
+            .build(raw_window_handle);
 
-    /// Create template to find OpenGL config.
-    fn config_template(raw_window_handle: RawWindowHandle) -> ConfigTemplate {
-        let builder = ConfigTemplateBuilder::new()
-            .with_alpha_size(8)
-            .compatible_with_native_window(raw_window_handle)
-            .with_surface_type(ConfigSurfaceTypes::WINDOW);
+        // There are also some old devices that support neither modern OpenGL nor GLES.
+        // To support these we can try and create a 2.1 context.
+        let legacy_context_attributes = ContextAttributesBuilder::new()
+            .with_context_api(ContextApi::OpenGl(Some(Version::new(2, 1))))
+            .build(raw_window_handle);
 
-
-        builder.build()
-    }
-
-    fn ensure_surface_and_context<T>(&mut self, event_loop: &EventLoopWindowTarget<T>) {
-        let window = winit::window::Window::new(&event_loop).unwrap();
-        let raw_window_handle = window.raw_window_handle();
-
-        // Lazily initialize, egl, wgl, glx etc
-        self.ensure_glutin_display(&window);
-        let glutin_display = self
-            .glutin_display
-            .as_ref()
-            .expect("Can't ensure surface + context without a Glutin Display connection");
-
-        let template = Self::config_template(raw_window_handle);
-        let config = unsafe {
-            glutin_display
-                .find_configs(template)
-                .unwrap()
-                .reduce(|accum, config| {
-                    // Find the config with the maximum number of samples.
-                    //
-                    // In general if you're not sure what you want in template you can request or
-                    // don't want to require multisampling for example, you can search for a
-                    // specific option you want afterwards.
-                    //
-                    // XXX however on macOS you can request only one config, so you should do
-                    // a search with the help of `find_configs` and adjusting your template.
-                    if config.num_samples() > accum.num_samples() {
-                        config
-                    } else {
-                        accum
-                    }
-                })
-                .unwrap()
+        let not_current_gl_context = unsafe {
+            gl_display.create_context(&gl_config, &context_attributes).unwrap_or_else(|_| {
+                gl_display.create_context(&gl_config, &fallback_context_attributes).unwrap_or_else(
+                    |_| {
+                        gl_display
+                            .create_context(&gl_config, &legacy_context_attributes)
+                            .expect("failed to create context")
+                    },
+                )
+            })
         };
-        println!("Picked a config with {} samples", config.num_samples());
 
-        // XXX: Winit is missing a window.surface_size() API and the inner_size may be the wrong
-        // size to use on some platforms!
-        let (width, height): (u32, u32) = window.inner_size().into();
-        let raw_window_handle = window.raw_window_handle();
-        let attrs = SurfaceAttributesBuilder::<WindowSurface>::new().build(
-            raw_window_handle,
-            NonZeroU32::new(width).unwrap(),
-            NonZeroU32::new(height).unwrap(),
-        );
-        let surface = unsafe {
-            glutin_display
-                .create_window_surface(&config, &attrs)
-                .unwrap()
-        };
-        let surface_state = SurfaceState { window, surface };
-
-        let prev_ctx = self.context.take();
-        match prev_ctx {
-            Some(ctx) => {
-                let not_current_context = ctx
-                    .make_not_current()
-                    .expect("Failed to make GL context not current");
-                self.context = Some(
-                    not_current_context
-                        .make_current(&surface_state.surface)
-                        .expect("Failed to make GL context current"),
-                );
-            }
-            None => {
-                let not_current_context =
-                    Self::create_compatible_gl_context(glutin_display, raw_window_handle, &config);
-                self.context = Some(
-                    not_current_context
-                        .make_current(&surface_state.surface)
-                        .expect("Failed to make GL context current"),
-                );
-            }
-        }
-
-        self.surface_dims = (width, height);
-
-        self.surface_state = Some(surface_state);
+        self.window = window;
+        self.gl_config = Some(gl_config);
+        self.gl_context = Some(not_current_gl_context.treat_as_possibly_current());
     }
 
-    fn ensure_renderer(&mut self) {
-        let glutin_display = self
-            .glutin_display
-            .as_ref()
-            .expect("Can't ensure render without a Glutin Display connection");
+    pub fn handle_resize(&mut self, new_size: PhysicalSize<u32>) {
+        if let Some((gl_context, gl_surface)) =
+            &self.gl_context.as_ref().zip(self.gl_surface.as_ref())
+        {
+            gl_surface.resize(
+                gl_context,
+                NonZeroU32::new(new_size.width).unwrap(),
+                NonZeroU32::new(new_size.height).unwrap(),
+            );
+            self.surface_dims = new_size;
 
-        self.app_state.ensure_renderer(glutin_display, self.surface_dims);
+            let gl_display = self.gl_config.as_ref().unwrap().display();
+            self.app_state.ensure_renderer(&gl_display, new_size);
+        }
     }
 
     pub fn queue_redraw(&self) {
-        if let Some(surface_state) = &self.surface_state {
+        if let Some(window) = &self.window {
             // log::debug!("Making Redraw Request");
-            surface_state.window.request_redraw();
+            window.request_redraw();
         }
     }
 
-    pub fn resume<T>(&mut self, event_loop: &EventLoopWindowTarget<T>) {
+    pub fn resume(&mut self, event_loop: &ActiveEventLoop) {
         log::info!("Resumed, creating render state...");
-        self.ensure_surface_and_context(event_loop);
-        self.ensure_renderer();
-        self.queue_redraw();
+
+        let (gl_config, window) =
+            if let Some(state) = self.gl_config.as_ref().zip(self.window.as_ref()) {
+                state
+            } else {
+                self.create_window(event_loop);
+
+                (self.gl_config.as_ref().unwrap(), self.window.as_ref().unwrap())
+            };
+
+        let attrs = window.build_surface_attributes(Default::default()).unwrap();
+        let gl_surface =
+            unsafe { gl_config.display().create_window_surface(gl_config, &attrs).unwrap() };
+
+        let gl_context = self.gl_context.as_ref().unwrap();
+
+        // Make it current.
+        gl_context.make_current(&gl_surface).unwrap();
+
+        // The context needs to be current for the Renderer to set up shaders and
+        // buffers. It also performs function loading, which needs a current context on
+        // WGL.
+        self.app_state.ensure_renderer(&gl_config.display(), self.surface_dims);
+
+        // Try setting vsync.
+        if let Err(res) = gl_surface
+            .set_swap_interval(gl_context, SwapInterval::Wait(NonZeroU32::new(1).unwrap()))
+        {
+            eprintln!("Error setting vsync: {res:?}");
+        }
+
+        self.gl_surface = Some(gl_surface);
+
+        // self.queue_redraw();
     }
 
+    ///
     pub fn handle_redraw_request(&mut self) {
-        if let Some(ref surface_state) = self.surface_state {
-            if let Some(ctx) = &self.context {
+        if let Some(ref surface) = self.gl_surface {
+            if let Some(ctx) = &self.gl_context {
                 if self.app_state.renderer_ready() {
+                    match self.app_state.update() {
+                        ScreenManagementCmd::PopScreen => {
+                            self.app_state.pop_screen();
+                        }
+                        ScreenManagementCmd::PushScreen(screen) => {
+                            self.app_state.push_screen(screen);
+                        }
+                        _ => {}
+                    }
                     self.app_state.draw();
 
 
-                    if let Err(err) = surface_state.surface.swap_buffers(ctx) {
+                    if let Err(err) = surface.swap_buffers(ctx) {
                         log::error!("Failed to swap buffers after render: {}", err);
                     }
                 }
@@ -229,7 +217,14 @@ impl App {
     }
 
     pub fn handle_suspend(&mut self) {
-        self.surface_state = None;
+        // This event is only raised on Android, where the backing NativeWindow for a GL
+        // Surface can appear and disappear at any moment.
+        println!("Android window removed");
+
+        // Destroy the GL Surface and un-current the GL Context before ndk-glue releases
+        // the window back to the system.
+        let gl_context = self.gl_context.take().unwrap();
+        gl_context.make_not_current().unwrap();
     }
 
     /// can potentially call exit
@@ -319,4 +314,19 @@ impl App {
             log::warn!("Touch event, but no screen to send it to");
         }
     }
+}
+
+pub fn gl_config_picker(configs: Box<dyn Iterator<Item = Config> + '_>) -> Config {
+    configs
+        .reduce(|accum, config| {
+            let transparency_check = config.supports_transparency().unwrap_or(false)
+                & !accum.supports_transparency().unwrap_or(false);
+
+            if transparency_check || config.num_samples() > accum.num_samples() {
+                config
+            } else {
+                accum
+            }
+        })
+        .unwrap()
 }

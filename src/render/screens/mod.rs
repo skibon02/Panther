@@ -1,13 +1,15 @@
 pub mod main;
 pub mod records;
 pub mod stats;
+pub mod active_training;
+pub mod paused_screen;
 
-use std::mem;
-use std::sync::{Arc, Mutex};
-use log::{error, info};
-use crate::render::{check_gl_errors, create_shader, gl};
-use crate::render::gl::{BLEND, COLOR, ONE_MINUS_SRC_ALPHA, SRC_ALPHA, UNPACK_ALIGNMENT};
-use crate::render::gl::types::{GLint, GLsizei, GLsizeiptr, GLuint};
+
+use std::sync::{Arc};
+use log::{info};
+use crate::render::{create_shader, gl};
+
+use crate::render::gl::types::{GLint, GLsizeiptr, GLuint};
 use crate::render::objects::SQUAD_VERTEX_DATA;
 use crate::render::utils::circle_animation::CircleAnimation;
 
@@ -17,10 +19,10 @@ pub enum ScreenManagementCmd {
     PopScreen
 }
 pub trait ScreenTrait {
-    fn start_scroll(&mut self, pos: (f64, f64)) -> bool {
+    fn start_scroll(&mut self, _pos: (f64, f64)) -> bool {
         true
     }
-    fn scroll(&mut self, pos: (f64, f64)) {
+    fn scroll(&mut self, _pos: (f64, f64)) {
         // info!("YAY scroll!!!! {:?}", pos);
     }
     fn press(&mut self, pos: (f64, f64)) -> ScreenManagementCmd {
@@ -29,6 +31,9 @@ pub trait ScreenTrait {
         ScreenManagementCmd::None
     }
     fn back(&mut self) -> ScreenManagementCmd {
+        ScreenManagementCmd::None
+    }
+    fn update(&mut self) -> ScreenManagementCmd {
         ScreenManagementCmd::None
     }
     fn draw(&mut self);
@@ -64,8 +69,6 @@ impl ScreenRendering {
 
             let program = gl.CreateProgram();
 
-            gl.PixelStorei(UNPACK_ALIGNMENT, 1);
-
             gl.AttachShader(program, vertex_shader);
             gl.AttachShader(program, fragment_shader);
 
@@ -75,9 +78,6 @@ impl ScreenRendering {
 
             gl.DeleteShader(vertex_shader);
             gl.DeleteShader(fragment_shader);
-
-            gl.Enable(BLEND);
-            gl.BlendFunc(SRC_ALPHA, ONE_MINUS_SRC_ALPHA);
 
             let mut vao = std::mem::zeroed();
             gl.GenVertexArrays(1, &mut vao);

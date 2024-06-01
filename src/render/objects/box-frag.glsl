@@ -1,21 +1,15 @@
-#version 320 es
+#version 300 es
 precision highp float;
 
-uniform vec3 color;
-uniform vec4 bounds;
+uniform vec4 color;
 uniform float y_ratio;
 
-in vec2 v_position; // normalized position where x 0..1, y 0..v_y_ratio
+in vec2 v_position; // normalized position where x 0..1, y 0..y_ratio
+in vec2 v_texcoord;
 
 out vec4 fragColor;
 
 void main() {
-    float x = v_position.x;
-    float y = v_position.y;
-
-    if (x < bounds.x || y < bounds.y || x - bounds.x > bounds.z || y - bounds.y > bounds.w) {
-        discard;
-    }
-
-    fragColor = vec4(color, 1.0);
+    fragColor = vec4(0.0);
+    fragColor = color;
 }

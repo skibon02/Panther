@@ -2,6 +2,7 @@ package com.skygrel.panther
 
 import android.Manifest
 import android.app.NativeActivity
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
@@ -9,7 +10,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
 
-class MainActivity : NativeActivity() {
+class MainActivity : NativeActivity(), ActivityCompat.OnRequestPermissionsResultCallback {
     private val PERMISSION_REQUEST_CODE = 1
 
     var locationHelper: LocationHelper? = null
@@ -17,12 +18,10 @@ class MainActivity : NativeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Example of a call to a native method
-//        binding.sampleText.text = stringFromJNI()
-        this.locationHelper = LocationHelper(this)
-        checkAndRequestPermissions()
-    }
 
+
+        this.locationHelper = LocationHelper(this)
+    }
 
     private fun checkAndRequestPermissions() {
         // Check if we already have the permission
@@ -37,26 +36,29 @@ class MainActivity : NativeActivity() {
         } else {
             // We already have permission
             Log.i("GPS", "Permission already granted!")
-//            onPermissionGranted()
+            locationHelper?.onPermissionGranted()
+            locationHelper?.startLocationUpdates();
         }
     }
 
-//    fun onRequestPermissionsResult(
-//        requestCode: Int,
-//        permissions: Array<String?>?,
-//        grantResults: IntArray
-//    ) {
-//        super.onRequestPermissionsResult(requestCode, permissions!!, grantResults)
-//        if (requestCode == PERMISSION_REQUEST_CODE) {
-//            if (grantResults.size > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-//                // Permission granted
-//                onPermissionGranted()
-//            } else {
-//                // Permission denied
-//                onPermissionDenied()
-//            }
-//        }
-//    }
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted
+                Log.i("GPS", "Permission granted!")
+                locationHelper?.onPermissionGranted()
+                locationHelper?.startLocationUpdates();
+            } else {
+                // Permission denied
+                Log.i("GPS", "Permission denied!")
+                locationHelper?.onPermissionDenied();
+            }
+        }
+    }
 
 
     /**

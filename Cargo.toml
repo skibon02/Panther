@@ -6,14 +6,18 @@ edition = "2021"
 
 [dependencies]
 log = "0.4"
-winit = { version = "0.28", features = ["android-native-activity"] }
+winit = { version = "0.30.0", features = ["android-native-activity", "rwh_06"] }
 glutin = { version = "0.31.3", features = ["egl"] }
-raw-window-handle = "0.5.0"
+# use 0.5 for glutin (other boys use 0.6)
 android_logger = "0.13"
 jni = "0.21.1"
 ab_glyph = "0.2.23"
-gif = "0.13.1"
 image = { version = "0.25.1", features = ["gif"] }
+parking_lot = "0.12.1"
+lazy_static = "1.4.0"
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.115"
+glutin-winit = "0.4.2"
 
 [build-dependencies]
 gl_generator = "0.14"
@@ -26,3 +30,7 @@ crate_type=["cdylib"]
 path="src/lib.rs"
 name="test-winit-glutin"
 required-features = [ "desktop" ]
+
+[patch.crates-io]
+glutin-winit = {git = "https://github.com/marc2332/glutin.git", branch = "feat/winit-0.30.0"}
+glutin = {git = "https://github.com/marc2332/glutin.git",  branch = "feat/winit-0.30.0"}
