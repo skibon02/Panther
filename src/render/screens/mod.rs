@@ -5,8 +5,8 @@ pub mod active_training;
 pub mod paused_screen;
 
 
-use std::sync::{Arc};
-use log::{info};
+use std::sync::Arc;
+use log::info;
 use crate::render::{create_shader, gl};
 
 use crate::render::gl::types::{GLint, GLsizeiptr, GLuint};

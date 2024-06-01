@@ -1,7 +1,7 @@
-use std::sync::{Arc};
+use std::sync::Arc;
 use crate::render::{get_surface_y_ratio, gl};
 use crate::render::gl::types::{GLint, GLuint};
-use crate::render::objects::{BoxProgram};
+use crate::render::objects::BoxProgram;
 use crate::render::utils::position::FreePosition;
 
 pub struct Tab {

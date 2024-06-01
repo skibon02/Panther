@@ -1,11 +1,11 @@
-use std::sync::{Arc};
+use std::sync::Arc;
 use std::time::Instant;
 use log::info;
 use crate::render::{get_surface_y_ratio, gl};
 use crate::render::gl::types::{GLint, GLuint};
 use crate::render::images::get_gif;
-use crate::render::objects::{BoxProgram};
-use crate::render::utils::position::{FreePosition};
+use crate::render::objects::BoxProgram;
+use crate::render::utils::position::FreePosition;
 
 pub struct StartAnimation {
     gl: Arc<gl::Gl>,

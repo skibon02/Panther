@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::io::Cursor;
-use std::sync::{OnceLock};
+use std::sync::OnceLock;
 use image::{AnimationDecoder, DynamicImage, GenericImageView};
 use image::codecs::gif::GifDecoder;
 use log::{debug, info};

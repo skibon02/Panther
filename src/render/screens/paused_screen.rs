@@ -1,4 +1,4 @@
-use std::sync::{Arc};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use crate::render::{gl, SURFACE_HEIGHT, SURFACE_WIDTH};
 use crate::render::fonts::get_font;
@@ -90,13 +90,13 @@ impl ScreenTrait for PausedScreen {
     fn press(&mut self, pos: (f64, f64)) -> ScreenManagementCmd {
         // continue button
         if pos.0 > 0.5 && pos.0 < 0.9 && pos.1 > 1.1 && pos.1 < 1.28 {
-            let mut gps_data = GPS_DATA.lock().unwrap();
+            let mut gps_data = GPS_DATA.lock();
             gps_data.resume();
             return ScreenManagementCmd::PopScreen;
         }
         // exit button
         if pos.0 > 0.1 && pos.0 < 0.5 && pos.1 > 1.1 && pos.1 < 1.28 {
-            let mut gps_data = GPS_DATA.lock().unwrap();
+            let mut gps_data = GPS_DATA.lock();
             gps_data.pause();
             push_new_record(&gps_data);
             stop_location_updates();
@@ -106,7 +106,7 @@ impl ScreenTrait for PausedScreen {
         ScreenManagementCmd::None
     }
     fn back(&mut self) -> ScreenManagementCmd {
-        let mut gps_data = GPS_DATA.lock().unwrap();
+        let mut gps_data = GPS_DATA.lock();
         gps_data.resume();
         ScreenManagementCmd::PopScreen
     }

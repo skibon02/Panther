@@ -1,4 +1,4 @@
-use std::sync::{Arc};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use jni::JavaVM;
 use jni::objects::{JObject, JObjectArray, JValue};
@@ -95,14 +95,14 @@ impl ApplicationHandler for WinitApp {
         }
     }
 
-    fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
+    fn window_event(&mut self, event_loop: &ActiveEventLoop, _window_id: WindowId, event: WindowEvent) {
         if self.exit_request.load(Ordering::Relaxed) {
             info!("[apploop] Exit requested! Dropping app...");
             event_loop.exit();
             self.app = None;
         }
         if let Some(app) = &mut self.app {
-            info!("[apploop] New event: {:?}", event);
+            // info!("[apploop] New event: {:?}", event);
             match event {
                 WindowEvent::KeyboardInput{
                     event: winit::event::KeyEvent {
@@ -140,7 +140,7 @@ impl ApplicationHandler for WinitApp {
         }
     }
 
-    fn suspended(&mut self, event_loop: &ActiveEventLoop) {
+    fn suspended(&mut self, _event_loop: &ActiveEventLoop) {
         info!("[apploop] Suspended");
         if let Some(app) = &mut self.app {
             app.handle_suspend();

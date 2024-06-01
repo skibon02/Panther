@@ -72,7 +72,7 @@ impl App {
         // normal platforms will return multiple configs, so we can find the config
         // with transparency ourselves inside the `reduce`.
         let template =
-            ConfigTemplateBuilder::new().with_alpha_size(8).with_transparency(cfg!(cgl_backend));
+            ConfigTemplateBuilder::new().with_alpha_size(8);
 
         let display_builder = DisplayBuilder::new().with_window_attributes(Some(window_attributes));
 

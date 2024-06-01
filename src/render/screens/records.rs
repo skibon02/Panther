@@ -1,10 +1,14 @@
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::fs::File;
+use std::io::Write;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use lazy_static::lazy_static;
-use crate::render::{gl, SURFACE_HEIGHT, SURFACE_WIDTH};
+use log::{info, warn};
+use parking_lot::{Mutex, MutexGuard};
+use crate::render::{ANDROID_DATA_PATH, gl, SURFACE_HEIGHT, SURFACE_WIDTH};
 use crate::render::fonts::get_font;
-use crate::render::images::{get_image};
+use crate::render::images::get_image;
 
 use crate::render::objects::image::Image;
 use crate::render::objects::r#box::Squad;
@@ -34,7 +38,7 @@ pub struct Records {
 }
 
 pub fn push_new_record(gps_data: &MutexGuard<GpsData>) {
-    let mut records = RECORDS_LIST.lock().unwrap();
+    let mut records = RECORDS_LIST.lock();
 
     //UNIX EPOCH
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs_f64();
@@ -56,12 +60,18 @@ pub fn push_new_record(gps_data: &MutexGuard<GpsData>) {
 
     records.records.push(record);
 
-    // let records_path = format!("{}/records.json", ANDROID_DATA_PATH);
-    //
-    // //write test content
-    // let mut file = File::create(&records_path).unwrap();
-    // let records = RECORDS_LIST.lock().unwrap();
-    // file.write_all(serde_json::to_string(&*records).unwrap().as_bytes()).unwrap();
+    let records_path = format!("{}/records.json", ANDROID_DATA_PATH);
+
+    //write test content
+    info!("Opening file {}", records_path);
+    let Ok(mut file) = File::create(&records_path) else {
+        warn!("File open failed! Creating empty records object...");
+        return;
+    };
+    info!("writing to file...");
+    if let Err(e) = file.write_all(serde_json::to_string(&*records).unwrap().as_bytes()) {
+        warn!("Writing to file failed! {:?}", e);
+    }
 }
 
 lazy_static!(
@@ -186,7 +196,7 @@ impl ScreenTrait for RecordsScreen {
 
         self.logo.draw(texture_id);
 
-        let records = RECORDS_LIST.lock().unwrap();
+        let records = RECORDS_LIST.lock();
         for (i, record) in records.records.iter().enumerate() {
             let text = format!("Record {}\n{:.2}m in {:.2}s at {:.2}m/s", i, record.distance, record.time, record.speed);
             self.record_square.set_pos_y_offset(- 0.3 * i as f64 + self.scroll_offset);

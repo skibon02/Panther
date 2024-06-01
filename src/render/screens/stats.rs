@@ -1,9 +1,9 @@
-use std::sync::{Arc};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 use crate::render::{gl, SURFACE_HEIGHT, SURFACE_WIDTH};
 use crate::render::fonts::get_font;
-use crate::render::images::{get_image};
+use crate::render::images::get_image;
 
 use crate::render::objects::image::Image;
 use crate::render::objects::r#box::Squad;
@@ -124,7 +124,7 @@ impl ScreenTrait for StatsScreen {
 
 
         {
-            let records = RECORDS_LIST.lock().unwrap();
+            let records = RECORDS_LIST.lock();
             let total_distance = records.total_distance;
             let total_time = records.total_time;
             let avg_speed = records.avg_speed;

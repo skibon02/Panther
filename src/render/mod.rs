@@ -1,14 +1,16 @@
 use std::ffi::{c_void, CStr, CString};
-use std::sync::{Arc};
+use std::fs::File;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use glutin::display::{Display, GlDisplay};
-use log::{error, info};
+use log::{error, info, warn};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use crate::render::fonts::load_fonts;
 use crate::render::gl::UNPACK_ALIGNMENT;
 use crate::render::images::load_images;
 use crate::render::screens::main::MainScreen;
 use crate::render::screens::{ScreenManagementCmd, ScreenTrait};
+use crate::render::screens::records::{Records, RECORDS_LIST};
 
 pub mod utils;
 pub mod objects;
@@ -96,14 +98,22 @@ extern "system" fn gl_debug_callback(
 pub const ANDROID_DATA_PATH: &str = "/data/user/0/com.skygrel.panther/files";
 impl AppState {
     pub fn new(exit_request: Arc<AtomicBool>) -> Self {
-        // let records_path = format!("{}/records.json", ANDROID_DATA_PATH);
-        //
-        // //read test content if file exists
-        // if let Ok(file) = File::open(&records_path) {
-        //     let records: Records = serde_json::from_reader(file).unwrap();
-        //     let mut records_list = RECORDS_LIST.lock().unwrap();
-        //     *records_list = records;
-        // }
+        let records_path = format!("{}/records.json", ANDROID_DATA_PATH);
+
+        //read test content if file exists
+        info!("Loading records state from file {}...", records_path);
+        if let Ok(file) = File::open(&records_path) {
+            info!("File opened successfully! Loading records...");
+            if let Ok(records) = serde_json::from_reader(file) {
+                let mut records_list = RECORDS_LIST.lock();
+                *records_list = records;
+            } else {
+                warn!("Deserialization failed! Creating empty records object...");
+            }
+        }
+        else {
+            warn!("File open failed! Creating empty records object...");
+        }
 
         AppState {
             screens: Vec::new(),

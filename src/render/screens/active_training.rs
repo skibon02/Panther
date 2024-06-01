@@ -1,4 +1,4 @@
-use std::sync::{Arc};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 use crate::render::{gl, SURFACE_HEIGHT, SURFACE_WIDTH};
@@ -16,12 +16,12 @@ use crate::render::utils::circle_animation::CircleAnimation;
 use crate::render::utils::position::{FixedPosition, FreePosition};
 
 
-use std::sync::Mutex;
 use jni::JNIEnv;
 use jni::objects::JClass;
 use jni::sys::jdouble;
 use lazy_static::lazy_static;
 use log::{info, warn};
+use parking_lot::Mutex;
 use crate::render::screens::paused_screen::PausedScreen;
 
 #[derive(Clone)]
@@ -179,7 +179,7 @@ pub extern "system" fn Java_com_skygrel_panther_LocationHelper_onLocationUpdate(
 ) {
     // Handle the location update
     println!("Received location update:\n{}:  Lat {}, Lon {}. Acc: {}", timestamp,  latitude, longitude, acc);
-    let mut gps_data = GPS_DATA.lock().unwrap();
+    let mut gps_data = GPS_DATA.lock();
     gps_data.update_location(latitude, longitude, acc, timestamp);
 }
 
@@ -190,7 +190,7 @@ pub extern "system" fn Java_com_skygrel_panther_LocationHelper_onProviderEnabled
     _class: JClass,
 ) {
     info!("GPS provider enabled!");
-    let mut gps_data = GPS_DATA.lock().unwrap();
+    let mut gps_data = GPS_DATA.lock();
     gps_data.available_since = Some(Instant::now());
 }
 
@@ -201,7 +201,7 @@ pub extern "system" fn Java_com_skygrel_panther_LocationHelper_onProviderDisable
     _class: JClass,
 ) {
     warn!("GPS provider disabled!");
-    let mut gps_data = GPS_DATA.lock().unwrap();
+    let mut gps_data = GPS_DATA.lock();
     gps_data.available_since = None;
 }
 
@@ -279,7 +279,7 @@ impl ActiveTrainingScreen {
 
 
         //reset training
-        let mut gps_data = GPS_DATA.lock().unwrap();
+        let mut gps_data = GPS_DATA.lock();
         *gps_data = GpsData::new();
 
 
@@ -317,19 +317,19 @@ impl ActiveTrainingScreen {
 impl ScreenTrait for ActiveTrainingScreen {
     fn press(&mut self, pos: (f64, f64)) -> ScreenManagementCmd {
         if pos.1 > 1.7 && pos.1 < 1.95 && pos.0 > 0.15 && pos.0 < 0.4  {
-            let mut gps_data = GPS_DATA.lock().unwrap();
+            let mut gps_data = GPS_DATA.lock();
             gps_data.pause();
             return ScreenManagementCmd::PushScreen(Box::new(PausedScreen::new(self.gl.clone(), self.exit_request.clone())));
         }
         ScreenManagementCmd::None
     }
     fn back(&mut self) -> ScreenManagementCmd {
-        let mut gps_data = GPS_DATA.lock().unwrap();
+        let mut gps_data = GPS_DATA.lock();
         gps_data.pause();
         ScreenManagementCmd::PushScreen(Box::new(PausedScreen::new(self.gl.clone(), self.exit_request.clone())))
     }
     fn update(&mut self) -> ScreenManagementCmd {
-        let gps_data = GPS_DATA.lock().unwrap();
+        let gps_data = GPS_DATA.lock();
 
         if gps_data.gps_online() {
             if gps_data.has_initial_metric() {

@@ -1,11 +1,10 @@
-use std::sync::{Arc};
+use std::sync::Arc;
 use std::time::Instant;
-use image::{GenericImageView};
 
-use crate::render::{gl};
+use crate::render::gl;
 use crate::render::gl::types::{GLint, GLuint};
 use crate::render::images::ImageData;
-use crate::render::objects::{BoxProgram};
+use crate::render::objects::BoxProgram;
 use crate::render::utils::position::FixedPosition;
 
 pub struct AnimatedImage {
