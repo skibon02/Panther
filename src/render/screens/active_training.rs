@@ -326,7 +326,7 @@ impl ScreenTrait for ActiveTrainingScreen {
     fn back(&mut self) -> ScreenManagementCmd {
         let mut gps_data = GPS_DATA.lock().unwrap();
         gps_data.pause();
-        return ScreenManagementCmd::PushScreen(Box::new(PausedScreen::new(self.gl.clone(), self.exit_request.clone())));
+        ScreenManagementCmd::PushScreen(Box::new(PausedScreen::new(self.gl.clone(), self.exit_request.clone())))
     }
     fn update(&mut self) -> ScreenManagementCmd {
         let gps_data = GPS_DATA.lock().unwrap();

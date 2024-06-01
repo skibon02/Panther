@@ -1,17 +1,14 @@
 use std::ffi::{c_void, CStr, CString};
-use std::fs::File;
-use std::io::Read;
 use std::sync::{Arc};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use glutin::display::{Display, GlDisplay};
-use log::{error, info, warn};
+use log::{error, info};
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use crate::render::fonts::load_fonts;
 use crate::render::gl::UNPACK_ALIGNMENT;
 use crate::render::images::load_images;
 use crate::render::screens::main::MainScreen;
 use crate::render::screens::{ScreenManagementCmd, ScreenTrait};
-use crate::render::screens::records::{Records, RECORDS_LIST};
 
 pub mod utils;
 pub mod objects;

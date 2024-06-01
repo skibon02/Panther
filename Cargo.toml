@@ -8,7 +8,6 @@ edition = "2021"
 log = "0.4"
 winit = { version = "0.30.0", features = ["android-native-activity", "rwh_06"] }
 glutin = { version = "0.31.3", features = ["egl"] }
-# use 0.5 for glutin (other boys use 0.6)
 android_logger = "0.13"
 jni = "0.21.1"
 ab_glyph = "0.2.23"

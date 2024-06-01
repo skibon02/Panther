@@ -2,7 +2,7 @@ use std::mem;
 use std::sync::{Arc};
 use ab_glyph::ScaleFont;
 use image::{GenericImageView};
-use log::{debug, info};
+use log::debug;
 use crate::render::{create_shader, get_surface_y_ratio, gl};
 use crate::render::fonts::FontData;
 use crate::render::gl::{Gles2};

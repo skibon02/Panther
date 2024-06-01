@@ -1,27 +1,16 @@
 use std::sync::{Arc};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Instant;
 use crate::render::{gl, SURFACE_HEIGHT, SURFACE_WIDTH};
 use crate::render::fonts::get_font;
-use crate::render::images::{get_gif, get_image};
-use crate::render::objects::animated_image::AnimatedImage;
-use crate::render::objects::image::Image;
 use crate::render::objects::r#box::Squad;
-use crate::render::objects::tab::Tab;
 use crate::render::objects::textbox::TextBox;
 use crate::render::screens::{ScreenManagementCmd, ScreenRendering, ScreenTrait};
 
 
 use crate::render::utils::circle_animation::CircleAnimation;
-use crate::render::utils::position::{FixedPosition, FreePosition};
+use crate::render::utils::position::FreePosition;
 
 
-use std::sync::Mutex;
-use jni::JNIEnv;
-use jni::objects::JClass;
-use jni::sys::jdouble;
-use lazy_static::lazy_static;
-use log::{info, warn};
 use crate::render::screens::active_training::GPS_DATA;
 use crate::render::screens::main::{MainScreen, stop_location_updates};
 use crate::render::screens::records::push_new_record;

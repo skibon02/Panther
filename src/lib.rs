@@ -1,13 +1,13 @@
 use std::sync::{Arc};
 use std::sync::atomic::{AtomicBool, Ordering};
-use jni::{JavaVM, JNIEnv};
-use jni::objects::{JClass, JObject, JObjectArray, JValue};
-use jni::sys::{jdouble, jobject};
+use jni::JavaVM;
+use jni::objects::{JObject, JObjectArray, JValue};
+use jni::sys::jobject;
 use log::{info, warn};
 use parking_lot::Mutex;
 use winit::application::ApplicationHandler;
-use winit::event::{Event, WindowEvent};
-use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopBuilder};
+use winit::event::WindowEvent;
+use winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopBuilder};
 use winit::keyboard;
 use winit::keyboard::NamedKey;
 use winit::platform::android::activity::AndroidApp;
@@ -78,7 +78,7 @@ struct WinitApp {
 impl WinitApp {
     pub fn new() -> Self {
         let exit_request = Arc::new(AtomicBool::new(false));
-        let mut app = Some(App::new(exit_request.clone()));
+        let app = Some(App::new(exit_request.clone()));
 
         Self {
             app,

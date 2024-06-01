@@ -5,12 +5,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use glutin::prelude::*;
 
-use glutin::config::{Config, ConfigSurfaceTypes, ConfigTemplate, ConfigTemplateBuilder};
-use glutin::context::{ContextApi, ContextAttributesBuilder, NotCurrentContext, PossiblyCurrentContext, Version};
-use glutin::display::{Display, DisplayApiPreference, GetGlDisplay, GlDisplay};
-use glutin::surface::{Surface, SurfaceAttributesBuilder, SwapInterval, WindowSurface};
+use glutin::config::{Config, ConfigTemplateBuilder};
+use glutin::context::{ContextApi, ContextAttributesBuilder, PossiblyCurrentContext, Version};
+use glutin::display::{GetGlDisplay, GlDisplay};
+use glutin::surface::{Surface, SwapInterval, WindowSurface};
 use glutin_winit::{DisplayBuilder, GlWindow};
-use winit::raw_window_handle as rwh_06;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event_loop::ActiveEventLoop;
 use winit::raw_window_handle::HasWindowHandle;
@@ -288,20 +287,17 @@ impl App {
                 }
                 winit::event::TouchPhase::Ended => {
                     if let Some(touch_state) = self.touch_state.remove(&id) {
-                        match touch_state {
-                            TouchState::MovingStart(_, _, _) => {
-                                match screen.press((location.x / screen_width, y_ratio - location.y / screen_width)) {
-                                    ScreenManagementCmd::PushScreen(screen) => {
-                                        self.app_state.push_screen(screen);
-                                    }
-                                    ScreenManagementCmd::PopScreen => {
-                                        self.app_state.pop_screen();
-                                    }
-                                    _ => {}
-
+                        if let TouchState::MovingStart(_, _, _) = touch_state {
+                            match screen.press((location.x / screen_width, y_ratio - location.y / screen_width)) {
+                                ScreenManagementCmd::PushScreen(screen) => {
+                                    self.app_state.push_screen(screen);
                                 }
+                                ScreenManagementCmd::PopScreen => {
+                                    self.app_state.pop_screen();
+                                }
+                                _ => {}
+
                             }
-                            _ => {}
                         }
                     }
                 }
