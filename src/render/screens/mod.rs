@@ -163,6 +163,7 @@ impl ScreenRendering {
     pub fn texture_id(&self) -> GLuint {
         self.texture
     }
+    #[profiling::function]
     pub fn clear_texture(&self) {
         let gl = &self.gl;
 
@@ -179,6 +180,7 @@ impl ScreenRendering {
         }
     }
 
+    #[profiling::function]
     pub fn present(&self) {
         let gl = &self.gl;
 

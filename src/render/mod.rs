@@ -182,6 +182,7 @@ impl AppState {
         }
     }
 
+    #[profiling::function]
     pub fn update(&mut self) -> ScreenManagementCmd {
         // call input screen's update method
         if let Some(screen) = self.get_input_screen() {
@@ -193,6 +194,7 @@ impl AppState {
 
     // called repeatedly from outside
     pub fn draw(&mut self) {
+        puffin::profile_function!();
         unsafe {
             let gl = self.gl.as_ref().unwrap();
             gl.ClearColor(0.1, 0.1, 0.1, 1.0);
@@ -202,6 +204,7 @@ impl AppState {
         let mut screens_len = self.screens.len();
         let mut i = 0;
         while i < screens_len {
+            profiling::scope!("Drawing screen", format!("iteration {}", i).as_str());
             self.screens[i].draw();
             if self.screens[i].is_expanded() && i > 0 {
                 info!("[ScreenStack]Screen {} is expanded, dropping back screens...", i);

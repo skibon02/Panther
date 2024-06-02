@@ -6,6 +6,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use lazy_static::lazy_static;
 use log::{info, warn};
 use parking_lot::{Mutex, MutexGuard};
+use puffin::profile_scope;
 use crate::render::{ANDROID_DATA_PATH, gl, SURFACE_HEIGHT, SURFACE_WIDTH};
 use crate::render::fonts::get_font;
 use crate::render::images::get_image;
@@ -188,6 +189,7 @@ impl ScreenTrait for RecordsScreen {
         // self.exit_request.store(true, Ordering::Relaxed);
         ScreenManagementCmd::PushScreen(Box::new(MainScreen::new(self.gl.clone(), self.exit_request.clone())))
     }
+    #[profiling::function]
     fn draw(&mut self) {
         let texture_id = self.screen_rendering.texture_id();
         self.screen_rendering.clear_texture();
@@ -198,6 +200,7 @@ impl ScreenTrait for RecordsScreen {
 
         let records = RECORDS_LIST.lock();
         for (i, record) in records.records.iter().enumerate() {
+            profile_scope!("render record");
             let text = format!("Record {}\n{:.2}m in {:.2}s at {:.2}m/s", i, record.distance, record.time, record.speed);
             self.record_square.set_pos_y_offset(- 0.3 * i as f64 + self.scroll_offset);
 

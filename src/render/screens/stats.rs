@@ -114,6 +114,7 @@ impl ScreenTrait for StatsScreen {
         // self.exit_request.store(true, Ordering::Relaxed);
         ScreenManagementCmd::PushScreen(Box::new(MainScreen::new(self.gl.clone(), self.exit_request.clone())))
     }
+    #[profiling::function]
     fn draw(&mut self) {
         let texture_id = self.screen_rendering.texture_id();
         self.screen_rendering.clear_texture();

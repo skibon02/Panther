@@ -10,6 +10,7 @@ use glutin::context::{ContextApi, ContextAttributesBuilder, PossiblyCurrentConte
 use glutin::display::{GetGlDisplay, GlDisplay};
 use glutin::surface::{Surface, SwapInterval, WindowSurface};
 use glutin_winit::{DisplayBuilder, GlWindow};
+use puffin::profile_function;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 use winit::event_loop::ActiveEventLoop;
 use winit::raw_window_handle::HasWindowHandle;
@@ -18,6 +19,7 @@ use crate::render::{AppState, get_surface_y_ratio, SURFACE_WIDTH};
 use crate::render::screens::ScreenManagementCmd;
 
 
+#[derive(Debug)]
 pub enum TouchState {
     //start, distance, send_move
     MovingStart(PhysicalPosition<f64>, f64, bool), // moving less than distance 50px
@@ -189,8 +191,8 @@ impl App {
         // self.queue_redraw();
     }
 
-    ///
     pub fn handle_redraw_request(&mut self) {
+        puffin::GlobalProfiler::lock().new_frame();
         if let Some(ref surface) = self.gl_surface {
             if let Some(ctx) = &self.gl_context {
                 if self.app_state.renderer_ready() {

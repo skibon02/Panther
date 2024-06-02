@@ -77,6 +77,7 @@ impl AnimatedImage {
         self.box_prog.move_pos((x_diff, y_diff));
     }
 
+    #[profiling::function]
     pub fn draw(&mut self, texture_id: GLuint) {
         let _gl = &self.gl;
 

@@ -56,6 +56,7 @@ impl Image {
         self.box_prog.set_pos_y_offset(offset);
     }
 
+    #[profiling::function]
     pub fn draw(&mut self, texture_id: GLuint) {
         self.box_prog.draw(texture_id, |gl| unsafe {
             gl.ActiveTexture(gl::TEXTURE1);

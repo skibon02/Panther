@@ -208,6 +208,7 @@ impl ScreenTrait for MainScreen {
         ScreenManagementCmd::None
     }
 
+    #[profiling::function]
     fn update(&mut self) -> ScreenManagementCmd {
         if LOCATION_PERMISSION_GRANTED.load(Ordering::Relaxed) && self.is_start_pressed {
             self.start_pressed();
@@ -224,6 +225,7 @@ impl ScreenTrait for MainScreen {
 
         ScreenManagementCmd::None
     }
+    #[profiling::function]
     fn draw(&mut self) {
         let texture_id = self.screen_rendering.texture_id();
         self.screen_rendering.clear_texture();

@@ -328,6 +328,7 @@ impl ScreenTrait for ActiveTrainingScreen {
         gps_data.pause();
         ScreenManagementCmd::PushScreen(Box::new(PausedScreen::new(self.gl.clone(), self.exit_request.clone())))
     }
+    #[profiling::function]
     fn update(&mut self) -> ScreenManagementCmd {
         let gps_data = GPS_DATA.lock();
 
@@ -363,6 +364,7 @@ impl ScreenTrait for ActiveTrainingScreen {
         }
         ScreenManagementCmd::None
     }
+    #[profiling::function]
     fn draw(&mut self) {
         let texture_id = self.screen_rendering.texture_id();
         self.screen_rendering.clear_texture();

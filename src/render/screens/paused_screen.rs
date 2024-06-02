@@ -110,6 +110,7 @@ impl ScreenTrait for PausedScreen {
         gps_data.resume();
         ScreenManagementCmd::PopScreen
     }
+    #[profiling::function]
     fn draw(&mut self) {
         let texture_id = self.screen_rendering.texture_id();
         self.screen_rendering.clear_texture();

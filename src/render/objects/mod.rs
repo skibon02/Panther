@@ -122,6 +122,7 @@ impl BoxProgram {
         }
     }
 
+    #[profiling::function]
     pub fn update_bounds(&mut self, bounds: (f64, f64, f64, f64)) {
         self.bounds = bounds;
         let gl = &self.gl;
@@ -168,6 +169,7 @@ impl BoxProgram {
         self.update_bounds(bounds);
     }
 
+    #[profiling::function]
     pub fn draw(&self, target_texture: GLuint, draw_fun: impl FnOnce(&Gles2)) {
         let gl = &self.gl;
         unsafe {

@@ -13,6 +13,7 @@ use winit::keyboard::NamedKey;
 use winit::platform::android::activity::AndroidApp;
 use winit::window::WindowId;
 use crate::app::App;
+use crate::render::ANDROID_DATA_PATH;
 
 pub mod app;
 pub mod render;
@@ -149,6 +150,11 @@ impl ApplicationHandler for WinitApp {
 }
 
 fn run(event_loop: EventLoop<()>) {
+    let server_addr = format!("0.0.0.0:{}", puffin_http::DEFAULT_PORT);
+    let _puffin_server = puffin_http::Server::new(&server_addr).unwrap();
+    eprintln!("Run this to view profiling data:  puffin_viewer {server_addr}");
+    puffin::set_scopes_on(true);
+
     let mut winit_app = WinitApp::new();
 
     info!("Running mainloop...");

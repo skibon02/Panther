@@ -37,6 +37,7 @@ impl Squad {
         Self::new(gl, color, FreePosition::new().width(1.0).height(get_surface_y_ratio()))
     }
 
+    #[profiling::function]
     pub fn set_color(&mut self, color: (f32, f32, f32)) {
         let gl = &self.gl;
         unsafe {
@@ -49,6 +50,7 @@ impl Squad {
         self.box_prog.set_pos_y_offset(y_offset);
     }
 
+    #[profiling::function]
     pub fn draw(&mut self, texture_id: GLuint) {
         self.box_prog.draw(texture_id, |_| {});
     }

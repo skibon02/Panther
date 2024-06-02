@@ -17,6 +17,9 @@ lazy_static = "1.4.0"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.115"
 glutin-winit = "0.4.2"
+puffin = "0.19.0"
+profiling = { version = "1.0.15", features = ["profile-with-puffin"] }
+puffin_http = "0.16.0"
 
 [build-dependencies]
 gl_generator = "0.14"

@@ -77,7 +77,9 @@ impl StartAnimation {
         self.animation_start.map(|t|t.elapsed().as_secs_f32() > 8.0).unwrap_or(false)
     }
 
+    #[profiling::function]
     pub fn draw(&mut self, texture_id: GLuint) {
+        log::info!("Drawing start animation...");
         let anim_time = if let Some(start) = self.animation_start {
             start.elapsed().as_secs_f32()
         }

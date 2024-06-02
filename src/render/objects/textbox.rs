@@ -228,6 +228,7 @@ impl TextBox {
         self.vert_buf = build_vertex_buffer(&self.gl, &self.pos, self.scale, self.vbo, &self.font_table, self.text.clone());
     }
 
+    #[profiling::function]
     pub fn draw(&mut self, texture_id: GLuint) {
         let gl = &self.gl;
 
